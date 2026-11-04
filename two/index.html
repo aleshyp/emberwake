@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-chapter="two">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Emberwake, Chapter Two: the Order wakes the Ashen Choir, singers who unmake magic by naming it." />
+    <meta name="theme-color" content="#e3140b" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="%SITE%two/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Emberwake" />
+    <meta property="og:title" content="Emberwake, Chapter Two: The Ashen Choir" />
+    <meta property="og:description" content="The Order wakes the Ashen Choir, singers who unmake magic by naming it. An illustrated story you scroll through." />
+    <meta property="og:url" content="%SITE%two/" />
+    <meta property="og:image" content="%SITE%social/two.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A hooded figure with a sword under shafts of light, re-inked in red, black and cream." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>The Ashen Choir · Emberwake</title>
+  </head>
+  <body>
+    <noscript><p class="noscript">Emberwake is an illustrated story that needs JavaScript to run.</p></noscript>
+    <div class="loader" id="loader" role="status">
+      <span class="loader__word">Emberwake</span>
+      <span class="loader__bar"><i></i></span>
+      <span class="loader__note">Chapter Two · Listening…</span>
+    </div>
+
+    <header class="hud">
+      <a class="hud__mark" href="../">Emberwake</a>
+      <div class="hud__right">
+        <button class="hud__sound" id="sound" type="button" aria-pressed="false">Sound <b>Off</b></button>
+        <span class="hud__chapter"><span class="hud__word">Chapter </span><b id="chapter">VIII</b> / <span id="chapter-total">XIV</span></span>
+      </div>
+    </header>
+
+    <main aria-label="Emberwake, Chapter Two: The Ashen Choir">
+      <h1 class="sr-only">Emberwake, Chapter Two: The Ashen Choir</h1>
+      <ol class="sr-only" id="sr-story"></ol>
+      <div class="track" id="track"></div>
+    </main>
+
+    <div class="captions" id="captions" aria-hidden="true"></div>
+
+    <div class="hint" id="hint" aria-live="polite">Scroll</div>
+
+    <div class="cursor" id="cursor" aria-hidden="true">
+      <svg viewBox="0 0 80 80">
+        <circle class="ring-bg" cx="40" cy="40" r="34" />
+        <circle class="ring" cx="40" cy="40" r="34" />
+      </svg>
+      <span class="cursor__label">Still</span>
+    </div>
+
+    <section class="title" id="title" aria-hidden="true">
+      <p class="title__kicker">The second chapter of</p>
+      <h2 class="title__word" data-text="EMBERWAKE">EMBERWAKE</h2>
+      <p class="title__sub">The girl with no name</p>
+    </section>
+
+    <div class="letterbox" aria-hidden="true"><i></i><i></i></div>
+
+    <section class="teaser" id="teaser" aria-labelledby="teaser-title">
+      <p class="teaser__kicker">Chapter Three</p>
+      <h2 class="teaser__title" id="teaser-title">The Wild Country</h2>
+      <p class="teaser__line">Beyond the ash, the old gods went to hide.<br />One of them knows her name.</p>
+      <p class="teaser__soon">Coming soon</p>
+      <div class="teaser__actions">
+        <a class="teaser__next" href="../">Chapter One</a>
+        <button type="button" id="again">Read again</button>
+        <button type="button" id="credits-open">Credits</button>
+      </div>
+    </section>
+
+    <dialog class="credits" id="credits" aria-labelledby="credits-title">
+      <h2 id="credits-title">Credits</h2>
+      <p>Story and site: <em>Emberwake</em>, an original short story. Chapter Two: <em>The Ashen Choir</em>.</p>
+      <p>All illustrations are wood engravings by <strong>Gustave Doré</strong> (1832–1883) for Milton’s <em>Paradise Lost</em>, in the public domain, re-inked live in WebGL.</p>
+      <ul>
+        <li>VIII. Book IV: "Now to the ascent of that steep savage hill"</li>
+        <li>IX. Book X: "This said, they both betook them several ways"</li>
+        <li>X. Book VI: "On the foughten field Michael and his angels, prevalent, encamping"</li>
+        <li>XI. Book IV: "A happy rural seat of various view"</li>
+        <li>XII. Book VII: "Wave rolling after wave, where way they found"</li>
+        <li>XIII. Book VI: "Hell at last yawning received them whole"</li>
+        <li>XIV. Book IX: "O Earth, how like to Heaven"</li>
+        <li>Chapter Three. Book II: "Gorgons, and Hydras, and Chimeras dire"</li>
+      </ul>
+      <p class="credits__src">Scans: the Internet Archive (University of Toronto Libraries). Built with OGL, GSAP and Lenis.</p>
+      <button type="button" id="credits-close">Close</button>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

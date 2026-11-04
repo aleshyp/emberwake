@@ -1,0 +1,9 @@
+# Cache rules for hosts that read _headers (Netlify, Cloudflare Pages). Ignored elsewhere.
+# Vite fingerprints everything in /assets, so it can be cached forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+# Plates aren't fingerprinted: cache for a week, revalidate after.
+/scenes/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+/social/*
+  Cache-Control: public, max-age=604800

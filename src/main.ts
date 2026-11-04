@@ -1,298 +1,37 @@
-import Lenis from 'lenis';
-import 'lenis/dist/lenis.css';
-import { gsap } from 'gsap';
+// Entry point for every chapter page. Each page sets <html data-chapter="…">.
+// Readers with WebGL get the animated edition (app.ts); everyone else gets the static plates
+// (static.ts). Both are loaded on demand, so the fallback never downloads the WebGL engine.
 import '@fontsource/cinzel/500.css';
 import '@fontsource/cinzel/700.css';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/600.css';
 import './style.css';
-import { scenes, storyScenes, GATE_SCENE, GATE_AT, TRANSITION, SCENE_VH } from './story';
-import { Stage } from './renderer';
-import { Fx } from './fx';
-import { Sound } from './audio';
+import { chapterOne } from './chapters/one';
+import { chapterTwo } from './chapters/two';
 
-const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
-const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
-const smoothstep = (e0: number, e1: number, x: number) => {
-  const k = clamp01((x - e0) / (e1 - e0));
-  return k * k * (3 - 2 * k);
-};
+const chapters = { one: chapterOne, two: chapterTwo };
+const chapter = chapters[document.documentElement.dataset.chapter as keyof typeof chapters] ?? chapterOne;
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const touch = window.matchMedia('(hover: none)').matches;
 
-// ---------- DOM ----------
-const track = $<HTMLDivElement>('#track');
-const captionsRoot = $<HTMLDivElement>('#captions');
-const chapterEl = $<HTMLElement>('#chapter');
-const hint = $<HTMLDivElement>('#hint');
-const cursor = $<HTMLDivElement>('#cursor');
-const ring = cursor.querySelector<SVGCircleElement>('.ring')!;
-const titleEl = $<HTMLElement>('#title');
-const loader = $<HTMLDivElement>('#loader');
-const loaderBar = $<HTMLElement>('#loader i');
-const srStory = $<HTMLOListElement>('#sr-story');
-const soundBtn = $<HTMLButtonElement>('#sound');
-const teaserEl = $<HTMLElement>('#teaser');
-const creditsDlg = $<HTMLDialogElement>('#credits');
-
-// ---------- Timeline: scenes can have different scroll lengths ----------
-const lengths = scenes.map((s) => s.length ?? 1);
-const offsets = lengths.map((_, k) => lengths.slice(0, k).reduce((a, b) => a + b, 0));
-const totalLength = lengths.reduce((a, b) => a + b, 0);
-/** where (in scene units) each scene starts handing over to the next */
-const tStartOf = (k: number) => 1 - TRANSITION / lengths[k];
-function locate(p: number) {
-  let i = scenes.length - 1;
-  for (let k = 0; k < scenes.length; k++) {
-    if (p < offsets[k] + lengths[k]) {
-      i = k;
-      break;
-    }
+function webglAvailable() {
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2') ?? c.getContext('webgl');
+    // release the probe's context right away; browsers cap how many can exist at once
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
+  } catch {
+    return false;
   }
-  return { i, t: clamp01((p - offsets[i]) / lengths[i]) };
 }
 
-// +100vh so the final scene can reach local progress 1
-track.style.height = `${totalLength * SCENE_VH + 100}vh`;
-$<HTMLElement>('#chapter-total').textContent = storyScenes[storyScenes.length - 1].chapter;
-
-// visual captions (aria-hidden) + a plain-text version of the story for screen readers
-const captionEls = scenes.map((s) =>
-  s.captions.map((c) => {
-    const el = document.createElement('p');
-    el.className = 'caption';
-    el.innerHTML = `<span class="caption__chapter">${s.chapter}</span><span class="caption__text">${c.text}</span>`;
-    Object.assign(el.style, c.pos);
-    captionsRoot.appendChild(el);
-    const li = document.createElement('li');
-    li.textContent = c.text;
-    srStory.appendChild(li);
-    return el;
-  }),
-);
-
-// ---------- Stage / FX / Sound ----------
-const stage = new Stage(scenes, reduced);
-const fx = new Fx(reduced);
-const sound = new Sound();
-
-soundBtn.addEventListener('click', async () => {
-  const on = await sound.toggle();
-  soundBtn.setAttribute('aria-pressed', String(on));
-  soundBtn.querySelector('b')!.textContent = on ? 'On' : 'Off';
-});
-
-$<HTMLButtonElement>('#again').addEventListener('click', () => {
-  lenis.scrollTo(0, { duration: reduced ? 0.01 : 3.2, easing: (x) => 1 - Math.pow(1 - x, 4) });
-});
-$<HTMLButtonElement>('#credits-open').addEventListener('click', () => creditsDlg.showModal());
-$<HTMLButtonElement>('#credits-close').addEventListener('click', () => creditsDlg.close());
-creditsDlg.addEventListener('click', (e) => e.target === creditsDlg && creditsDlg.close());
-
-// ---------- State ----------
-const state = {
-  hold: 0,
-  holding: false,
-  awake: 0, // tweened 0..1
-  woken: false,
-  gate: false,
-  mouse: [0, 0] as [number, number],
-  mouseTarget: [0, 0] as [number, number],
-  cursor: [window.innerWidth / 2, window.innerHeight / 2],
-  cursorTarget: [window.innerWidth / 2, window.innerHeight / 2],
-  chapter: '',
-  boomed: false,
+const staticEdition = (err?: unknown) => {
+  if (err) console.error(err);
+  return import('./static').then((m) => m.renderStatic(chapter));
 };
 
-const lenis = new Lenis({ autoRaf: false, smoothWheel: !reduced, lerp: 0.085 });
-const sceneHeight = () => (window.innerHeight * SCENE_VH) / 100;
-const gateY = () => (offsets[GATE_SCENE] + GATE_AT * lengths[GATE_SCENE]) * sceneHeight();
-
-function wake() {
-  if (state.woken) return;
-  state.woken = true;
-  state.gate = false;
-  state.holding = false;
-  gsap.to(state, { awake: 1, duration: reduced ? 0.01 : 1.6, ease: 'power2.out' });
-  gsap.to(state, { hold: 0, duration: 1.2, ease: 'power2.inOut', delay: 0.2 });
-  document.body.classList.add('is-awake');
-  sound.wake();
-}
-
-// ---------- Input ----------
-window.addEventListener('pointermove', (e) => {
-  state.cursorTarget = [e.clientX, e.clientY];
-  state.mouseTarget = [(e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1)];
-});
-
-let canHold = false;
-const HOLD_MS = 1800;
-let holdFrom = { at: 0, value: 0 }; // wall-clock anchor so the hold is frame-rate independent
-const startHold = (e?: Event) => {
-  if (e && (e.target as HTMLElement).closest?.('button, a')) return;
-  if (!canHold || state.woken || state.holding) return;
-  state.holding = true;
-  holdFrom = { at: performance.now(), value: state.hold };
-};
-const endHold = () => (state.holding = false);
-window.addEventListener('pointerdown', startHold);
-window.addEventListener('pointerup', endHold);
-window.addEventListener('pointercancel', endHold);
-window.addEventListener('blur', endHold);
-window.addEventListener('keydown', (e) => {
-  if ((e.code === 'Space' || e.code === 'Enter') && canHold && !state.woken) {
-    e.preventDefault();
-    if (!e.repeat) startHold();
-  }
-});
-window.addEventListener('keyup', (e) => {
-  if (e.code === 'Space' || e.code === 'Enter') endHold();
-});
-
-// ---------- Loop ----------
-const RING = 2 * Math.PI * 34;
-ring.style.strokeDasharray = `${RING}`;
-let last = performance.now();
-
-function frame(now: number) {
-  // real elapsed time (capped only for tab-switch gaps) so the hold feels the same at any frame rate
-  const dt = Math.min((now - last) / 1000, 0.25);
-  last = now;
-  // gate: a soft wall on the ember until the reader holds on (scrolling back up stays free)
-  if (!state.woken) {
-    const g = gateY();
-    if (reduced && lenis.scroll > g) wake();
-    else if (!reduced && lenis.targetScroll > g) {
-      state.gate = true;
-      if (lenis.animatedScroll > g + 1) lenis.scrollTo(g, { immediate: true });
-      else lenis.scrollTo(g);
-    }
-  }
-  lenis.raf(now);
-
-  const scroll = lenis.scroll;
-  const p = Math.max(scroll / sceneHeight(), 0);
-  const { i, t } = locate(p);
-  const tStart = tStartOf(i);
-  const transitioning = i < scenes.length - 1 && t > tStart;
-  const mix = transitioning ? clamp01((t - tStart) / TRANSITION) : 0;
-
-  // hold progress
-  canHold = i === GATE_SCENE && !state.woken && t > 0.05 && t < tStart;
-  if (!state.woken) {
-    if (state.holding && canHold) state.hold = clamp01(holdFrom.value + (performance.now() - holdFrom.at) / HOLD_MS);
-    else state.hold = clamp01(state.hold - dt / 0.7);
-    if (state.hold >= 1) wake();
-  }
-
-  // smoothing
-  state.mouse[0] += (state.mouseTarget[0] - state.mouse[0]) * 0.05;
-  state.mouse[1] += (state.mouseTarget[1] - state.mouse[1]) * 0.05;
-  state.cursor[0] += (state.cursorTarget[0] - state.cursor[0]) * 0.22;
-  state.cursor[1] += (state.cursorTarget[1] - state.cursor[1]) * 0.22;
-
-  // make sure the scene we're in and the next one are loading first
-  stage.loadScene(i).catch(() => {});
-  if (i + 1 < scenes.length) stage.loadScene(i + 1).catch(() => {});
-
-  stage.render({
-    a: i,
-    b: transitioning ? i + 1 : i,
-    mix,
-    localA: t,
-    localB: 0,
-    hold: state.hold,
-    awake: state.awake,
-    mouse: reduced ? [0, 0] : state.mouse,
-    time: now / 1000,
-  });
-
-  // captions
-  const awakeNow = state.woken;
-  scenes.forEach((s, si) =>
-    s.captions.forEach((c, ci) => {
-      const okWhen = !c.when || (c.when === 'awake') === awakeNow;
-      const on = si === i && okWhen && t >= c.at[0] && t <= c.at[1];
-      captionEls[si][ci].classList.toggle('is-on', on);
-    }),
-  );
-
-  // teaser: letterbox in during the melt, then reveal the Chapter Two card
-  const teaserNow = !!scenes[i].teaser || (transitioning && !!scenes[i + 1].teaser && mix > 0.4);
-  document.body.classList.toggle('is-teaser', teaserNow);
-  teaserEl.classList.toggle('is-on', !!scenes[i].teaser && t > 0.22);
-
-  // chapter
-  const ch = transitioning && mix > 0.5 ? scenes[i + 1].chapter : scenes[i].chapter;
-  if (ch !== state.chapter) {
-    state.chapter = ch;
-    chapterEl.textContent = ch;
-  }
-
-  // scroll hint / hold hint
-  hint.classList.toggle('is-on', p < 0.04 || canHold);
-  hint.textContent = canHold ? (touch ? 'Press and hold' : 'Press and hold — or hold Space') : 'Scroll';
-
-  // cursor
-  const holdMode = canHold;
-  cursor.classList.toggle('is-hold', holdMode);
-  cursor.classList.toggle('is-holding', state.holding && holdMode);
-  cursor.classList.toggle('is-touch', touch);
-  const [cx, cy] = touch ? [window.innerWidth / 2, window.innerHeight * 0.72] : state.cursor;
-  cursor.style.transform = `translate3d(${cx}px, ${cy}px, 0)`;
-  ring.style.strokeDashoffset = `${RING * (1 - state.hold)}`;
-
-  // finale title + debris (on the last story scene), fading out before the teaser
-  const finale = i === storyScenes.length - 1;
-  const fadeOut = 1 - smoothstep(tStart - 0.1, tStart - 0.01, t);
-  const r = finale ? clamp01((t - 0.2) / 0.22) * fadeOut : 0;
-  titleEl.style.setProperty('--r', r.toFixed(4));
-  titleEl.classList.toggle('is-on', r > 0);
-  const debrisFade = finale ? 1 - smoothstep(tStart - 0.06, tStart + 0.12, t) : 0;
-  const debris = finale ? clamp01((t - 0.18) / 0.45) : 0;
-  if (debris > 0.04 && !state.boomed) {
-    state.boomed = true;
-    sound.boom(0.6);
-  } else if (debris < 0.01) state.boomed = false;
-
-  // ember motes follow how much power the current scene carries
-  const powerA = scenes[i].power;
-  const powerB = transitioning ? scenes[i + 1].power : powerA;
-  const velocity = lenis.velocity || 0;
-  fx.render({
-    time: now / 1000,
-    dt,
-    motes: state.awake * (powerA + (powerB - powerA) * mix),
-    debris,
-    debrisFade,
-    velocity,
-  });
-  sound.update({ velocity, mix, hold: state.hold, awake: state.awake });
-
-  requestAnimationFrame(frame);
-}
-
-// ---------- Boot ----------
-// the first two scenes gate the loader; the rest stream in behind it, in story order
-let loaded = 0;
-const first = [0, 1].map((k) =>
-  stage.loadScene(k).then(() => (loaderBar.style.transform = `scaleX(${++loaded / 2})`)),
-);
-Promise.all(first)
-  .then(async () => {
-    for (let k = 2; k < scenes.length; k++) await stage.loadScene(k).catch(console.error);
-  })
-  .catch(() => {});
-Promise.all(first)
-  .then(() => {
-    loader.classList.add('is-done');
-    if (reduced) document.body.classList.add('is-reduced');
-    requestAnimationFrame(frame);
-  })
-  .catch((err) => {
-    loader.querySelector('.loader__note')!.textContent = 'The ember would not light. Try reloading.';
-    console.error(err);
-  });
-
-// expose for debugging in devtools (dev builds only)
-if (import.meta.env.DEV) Object.assign(window, { __ember: { lenis, state, stage, fx, sound } });
+if (new URLSearchParams(location.search).has('static') || !webglAvailable()) staticEdition();
+else
+  import('./app')
+    .then((m) => m.start(chapter, reduced))
+    .catch(staticEdition);

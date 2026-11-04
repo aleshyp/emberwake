@@ -2,18 +2,14 @@ import { Renderer, Program, Mesh, Triangle, Texture } from 'ogl';
 import { vertex, fragment } from './shaders';
 import type { Scene, TransitionKind } from './story';
 import { rasterizeDepth } from './depth';
+import { plateUrls } from './images';
+import { PALETTE } from './palette';
 
 const hex = (h: string) => {
   const n = parseInt(h.replace('#', ''), 16);
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 };
 
-export const PALETTE = {
-  ink: '#0b0909',
-  red: '#e3140b',
-  paper: '#efe8dc',
-  accent: '#3fe6ff',
-};
 
 const TRANSITION_ID: Record<TransitionKind, number> = { melt: 0, panels: 1, iris: 2 };
 
@@ -33,24 +29,65 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (t: number) => t * t * (3 - 2 * t);
 const smooth = (e0: number, e1: number, x: number) => ease(Math.min(Math.max((x - e0) / (e1 - e0), 0), 1));
 
+/** load the first URL that decodes (an AVIF can still fail where the probe passed) */
+function loadFirst(urls: string[]): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const tryAt = (k: number) => {
+      if (k >= urls.length) return reject(new Error(`Failed to load ${urls.join(', ')}`));
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => resolve(img);
+      img.onerror = () => tryAt(k + 1);
+      img.src = urls[k];
+    };
+    tryAt(0);
+  });
+}
+
 export class Stage {
-  renderer: Renderer;
-  program: Program;
-  mesh: Mesh;
-  blank: Texture;
+  renderer!: Renderer;
+  program!: Program;
+  mesh!: Mesh;
+  blank!: Texture;
+  flat!: Texture;
   textures: (Texture | undefined)[] = [];
   depths: (Texture | undefined)[] = [];
-  flat: Texture;
   aspects: number[] = [];
+  /** decoded plates and depth maps, kept so textures can be rebuilt after a lost context */
+  private images: (HTMLImageElement | undefined)[] = [];
+  private depthMaps: (HTMLCanvasElement | undefined)[] = [];
   private loading = new Map<number, Promise<void>>();
+  private canvas: HTMLCanvasElement;
+  /** true between webglcontextlost and webglcontextrestored */
+  lost = false;
   dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   constructor(private scenes: Scene[], private reduced: boolean) {
-    this.renderer = new Renderer({ dpr: this.dpr, antialias: false, powerPreference: 'high-performance' });
+    this.canvas = document.createElement('canvas');
+    this.canvas.classList.add('stage');
+    this.canvas.setAttribute('aria-hidden', 'true');
+    this.build();
+    document.body.prepend(this.canvas);
+
+    // Mobile browsers drop WebGL contexts under memory pressure or after long backgrounding.
+    // preventDefault() asks for the context back; when it returns, everything is rebuilt from cache.
+    this.canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      this.lost = true;
+    });
+    this.canvas.addEventListener('webglcontextrestored', () => {
+      this.build();
+      this.lost = false;
+    });
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  /** (re)create the renderer, program and every texture loaded so far */
+  private build() {
+    const reduced = this.reduced;
+    this.renderer = new Renderer({ canvas: this.canvas, dpr: this.dpr, antialias: false, powerPreference: 'high-performance' });
     const gl = this.renderer.gl;
-    gl.canvas.classList.add('stage');
-    gl.canvas.setAttribute('aria-hidden', 'true');
-    document.body.prepend(gl.canvas);
+    if (!gl) throw new Error('WebGL is unavailable');
 
     // 1x1 ink texture shown if a scene is reached before its image arrives
     this.blank = new Texture(gl, { image: new Uint8Array([11, 9, 9, 255]), width: 1, height: 1, generateMipmaps: false });
@@ -97,7 +134,8 @@ export class Stage {
       },
     });
     this.mesh = new Mesh(gl, { geometry: new Triangle(gl), program: this.program });
-    window.addEventListener('resize', () => this.resize());
+    this.textures = this.images.map((img) => img && new Texture(gl, { image: img }));
+    this.depths = this.depthMaps.map((map) => map && new Texture(gl, { image: map, generateMipmaps: false }));
     this.resize();
   }
 
@@ -106,22 +144,21 @@ export class Stage {
     const existing = this.loading.get(i);
     if (existing) return existing;
     const s = this.scenes[i];
-    const p = new Promise<void>((resolve, reject) => {
-      const img = new Image();
-      img.decoding = 'async';
-      img.onload = () => {
-        this.textures[i] = new Texture(this.renderer.gl, { image: img });
+    const p = plateUrls(s.src)
+      .then(loadFirst)
+      .then((img) => {
+        this.images[i] = img;
         this.aspects[i] = img.naturalWidth / img.naturalHeight;
-        if (s.depth) {
-          const map = rasterizeDepth(s.depth, this.aspects[i]);
-          this.depths[i] = new Texture(this.renderer.gl, { image: map, generateMipmaps: false });
-        }
-        resolve();
-      };
-      img.onerror = () => reject(new Error(`Failed to load ${s.src}`));
-      img.src = s.src;
-    });
+        const map = s.depth && rasterizeDepth(s.depth, this.aspects[i]);
+        this.depthMaps[i] = map;
+        if (this.lost) return; // build() picks these up when the context comes back
+        const gl = this.renderer.gl;
+        this.textures[i] = new Texture(gl, { image: img });
+        if (map) this.depths[i] = new Texture(gl, { image: map, generateMipmaps: false });
+      });
     this.loading.set(i, p);
+    // forget failures after a while so the frame loop retries the plate (e.g. after a network blip)
+    p.catch(() => window.setTimeout(() => this.loading.delete(i), 4000));
     return p;
   }
 
@@ -179,6 +216,7 @@ export class Stage {
   }
 
   render(f: FrameState) {
+    if (this.lost) return;
     const u = this.program.uniforms;
     const A = this.scenes[f.a];
     const B = this.scenes[f.b];

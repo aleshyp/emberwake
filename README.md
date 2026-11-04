@@ -1,27 +1,38 @@
 # Emberwake
 
-A scroll-driven illustrated short story. Public-domain engravings are re-inked in real time by a WebGL shader (red / ink / paper with a vertical line screen), and scenes "melt" into each other column by column as you scroll.
+A scroll-driven illustrated story in chapters. Public-domain engravings are re-inked in real time by a WebGL shader (red / ink / paper with a vertical line screen), and scenes "melt" into each other column by column as you scroll.
+
+- **Chapter One** (`/`): the girl who swept the stairs, and the ember she woke.
+- **Chapter Two, *The Ashen Choir*** (`/two/`): singers who unmake magic by naming it.
 
 ## Run it
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # type-check + production build into dist/
+npm run dev        # http://localhost:5173  (Chapter Two at /two/)
+npm run build      # type-check + production build into dist/
+npm run preview    # serve dist/ locally
 ```
+
+Add `?static` to any URL to see the no-WebGL edition.
 
 ## How it works
 
 | File | What it does |
 |---|---|
-| `src/story.ts` | **All the content.** Scenes, camera moves, tone thresholds, captions. Edit this to change the story. |
-| `src/shaders.ts` | Fragment shader: cover-fit + Ken Burns camera, 3-tone palette mapping, line screen, ember swirl/glow, and the column "melt" transition. |
-| `src/renderer.ts` | OGL setup: one full-screen triangle, progressive texture loading, per-frame uniforms, inset panel layout. |
+| `src/chapters/one.ts`, `two.ts` | **All the content.** Each chapter's scenes, camera moves, tone thresholds, captions, gate. Edit these to change the story. |
+| `src/story.ts` | The types (`Scene`, `Gate`, `Chapter`, …) and shared constants. |
+| `index.html`, `two/index.html` | One page per chapter: share-card metadata, finale title, next-chapter card, credits. `<html data-chapter>` picks the chapter. |
+| `src/main.ts` | Entry point. Picks the chapter, checks for WebGL, then loads either the animated edition or the static one. |
+| `src/app.ts` | The animated edition: Lenis smooth scroll → scene index/progress, the gate, captions, cursor, finale title. |
+| `src/static.ts` | The static edition for browsers without WebGL: every plate in order with its captions, toned by SVG filters into the same three inks. |
+| `src/shaders.ts` | Fragment shader: cover-fit + Ken Burns camera, 3-tone palette mapping, line screen, ember swirl/glow, and the transitions. |
+| `src/renderer.ts` | OGL setup: one full-screen triangle, progressive plate loading, per-frame uniforms, inset panel layout, and recovery from a lost WebGL context. |
+| `src/images.ts` | Picks AVIF or JPEG and the full or 1280px plate for this screen. |
 | `src/depth.ts` | Rasterizes each scene's hand-traced depth polygons into a soft depth map (uploaded as a texture). |
-| `src/fx.ts` | 2D canvas layer: ember motes (after the wake) and the scroll-scrubbed debris burst behind the title. |
-| `src/audio.ts` | Fully synthesized Web Audio sound: drone, scroll wind, transition whooshes, ember riser, wake bell, impacts. Off by default. |
-| `src/main.ts` | Lenis smooth scroll → scene index/progress, the hold-to-wake gate, captions, cursor, finale title. |
-| `src/style.css` | Caption cards, HUD, hold cursor, glitch title, loader. |
+| `src/fx.ts` | 2D canvas layer: ember motes (once awake) and the scroll-scrubbed debris burst behind the title. |
+| `src/audio.ts` | Fully synthesized Web Audio sound: drone, scroll wind, transition whooshes, ember riser, wake bell, impacts, and the Ashen Choir. Off by default; pauses when the tab is hidden. |
+| `src/style.css` | Caption cards, HUD, gate cursor, glitch title, loader, static edition. |
 
 **Scroll model:** each scene gets `SCENE_VH` (260vh) of scroll. The last `TRANSITION` (38%) of each scene hands over to the next scene, using the transition that scene names:
 
@@ -31,15 +42,45 @@ npm run build    # type-check + production build into dist/
 
 **Inset panels:** a scene's `inset` is a framed close-up of the same engraving. It wipes in, drifts at its own speed for parallax and slowly pushes in. On portrait screens it widens and recenters automatically.
 
-**Layered depth:** a scene's `depth` lists hand-traced polygons (image space, 0–1 from the top-left) with a depth from 0 to 1, plus an optional vertical `gradient` for foregrounds. They're painted into a feathered depth map, and the shader displaces near layers as you scroll and move the mouse, with a soft contact shadow behind them so the figures read like cut-paper layers. `amount` controls how far the nearest layer travels. Keep it around 0.03, because larger values smear thin shapes like wings. Reduced motion disables it.
+**Layered depth:** a scene's `depth` lists hand-traced polygons (image space, 0–1 from the top-left) with a depth from 0 to 1, plus an optional vertical `gradient` for foregrounds (`layers` can be empty if you only want the gradient). They're painted into a feathered depth map, and the shader displaces near layers as you scroll and move the mouse, with a soft contact shadow behind them so the figures read like cut-paper layers. `amount` controls how far the nearest layer travels. Keep it around 0.03, because larger values smear thin shapes like wings. Reduced motion disables it.
 
-**Chapter Two teaser:** the last scene has `teaser: true`. The page letterboxes during the melt into it, hides the chapter counter, and shows the Chapter Two card with **Read again** and **Credits**. Scenes can set `length` (a multiple of `SCENE_VH`); the finale uses 1.6 so the title has time to hold before it fades.
+**Next-chapter teaser:** the last scene has `teaser: true`. The page letterboxes during the melt into it, hides the chapter counter, and shows the next-chapter card from the HTML. Scenes can set `length` (a multiple of `SCENE_VH`); finales use 1.6 so the title has time to hold before it fades.
 
-**The gate:** on the ember scene, scrolling stops at `GATE_AT` until the reader holds the mouse (or Space/Enter, or a long press on touch) for 1.8s. Waking the ember unlocks the cyan accent, which then shows up in the highlights of later scenes. With `prefers-reduced-motion`, the gate opens automatically and transitions become crossfades.
+**Gates:** one scene per chapter can set `gate: { kind, at }`. Scrolling stops at local progress `at` until the reader passes it:
 
-**Tuning a scene:** `tone: [ink→red, red→paper]` sets the luminance thresholds. Lower values give more red and paper, higher values more ink. `cam.from/to` is `[zoom, centerX, centerY]` in image space (0–1, measured from the top-left corner).
+- `hold` (Chapter One, the ember): hold the mouse, Space/Enter, or a long press for 1.8s. Waking the ember unlocks the cyan accent, which then shows up in the highlights of later scenes.
+- `still` (Chapter Two, the thicket): stop moving for 3.2s. Any pointer movement, scroll, touch or key resets it. The ember's glow shrinks as she hides and flares when the reader moves, and the Choir swells. It's the inverse of Chapter One: there you hold on, here you let go.
+
+Both are timed by the wall clock, so slow or throttled frames don't change how long they take. Captions can be limited to `when: 'before'` or `'after'` the gate. With `prefers-reduced-motion`, gates open automatically and transitions become crossfades.
+
+**The Choir:** a scene's `song` (0–1) sets how loudly the Ashen Choir sings under it: a synthesized D-minor chord of vibrato voices through moving vowel formants.
+
+**Tuning a scene:** `tone: [ink→red, red→paper]` sets the luminance thresholds. Lower values give more red and paper, higher values more ink. Chapter One averages about 22% ink, 62% red and 16% paper; aim for that balance. `cam.from/to` is `[zoom, centerX, centerY]` in image space (0–1, measured from the top-left corner). `power` sets how much cyan the highlights take once awake; keep it lower on plates with big pale skies.
+
+**No WebGL?** `main.ts` probes for WebGL before loading anything heavy. Without it (or if the engine fails to start), readers get the static edition, which never downloads the WebGL engine. If a mobile browser drops the GPU context mid-read, the renderer rebuilds every texture from the decoded plates it keeps in memory.
+
+## Adding a plate
+
+```bash
+npm run plate -- path/to/scanned-page.jpg name   # crop to the engraving, grayscale, auto-level → art/name.jpg
+npm run encode -- name                            # art/name.jpg → public/scenes/name{,-1280}.{avif,jpg}
+```
+
+Then reference it as `src: 'name'` in a chapter. `art/` holds the source plates (not served). `public/scenes/` holds what's served: AVIF at 2048px and 1280px, plus grayscale JPEG fallbacks. Phones (layouts up to ~760 CSS px) get the 1280px set. The line screen is ~3.5 CSS px at any DPR, so a denser screen wouldn't show more detail anyway. Don't denoise plates: it smears the hatching.
+
+Sizes: Chapter One is 4.0 MB of AVIF on desktop and 2.4 MB on phones (it was 7.9 MB of JPEG). Chapter Two is 2.3 MB and 1.5 MB.
+
+## Deploying
+
+It's a static site: `npm run build` and upload `dist/`. Netlify, Vercel, Cloudflare Pages and GitHub Pages all work, using `npm run build` with `dist` as the output folder.
+
+- **Share cards:** Open Graph needs absolute image URLs. The build fills `%SITE%` in the HTML from `SITE_URL`, falling back to the host's own variable (Netlify `URL`, Vercel `VERCEL_PROJECT_PRODUCTION_URL`, Cloudflare `CF_PAGES_URL`). On other hosts, set `SITE_URL=https://your.domain`. The cards are `public/social/one.jpg` and `two.jpg` (1200×630, rendered from the live shader).
+- **Subpath hosting** (e.g. GitHub Pages at `/emberwake/`): build with `BASE_PATH=/emberwake/`.
+- **Caching:** `public/_headers` sets long-lived caching for fingerprinted assets on Netlify and Cloudflare Pages.
 
 ## The story
+
+### Chapter One
 
 1. **The Hall.** In the Hall of the Silent Order, magic is weighed, measured, and given only to the chosen. Ione was never chosen. She swept the stairs.
 2. **The Keeper.** Old Maelis kept the last ember of a god the Order had killed. On the night he died, he pressed it into her hands.
@@ -49,11 +90,23 @@ npm run build    # type-check + production build into dist/
 6. **The Storm.** They came all at once: spear, wing, and fire. Ione did not know how to fight. The ember did.
 7. **The Leap.** So she did the one thing no one had ever dared. She fell upward. *Emberwake.*
 
-*Teaser: Chapter Two, The Ashen Choir.* The Order is not finished with her. Neither is the god.
+### Chapter Two: The Ashen Choir
+
+8. **The Edge.** She came down at dawn on the last cliff before the wild country. Ahead, nothing had a name yet.
+9. **The Choir.** The Order did not send soldiers this time. It woke the Ashen Choir. They do not fight magic. They name it, and whatever they name turns to ash.
+10. **The Ash.** Every spell they named fell out of the sky. By nightfall the Choir stood on a hill of quiet witches, listening for one more heartbeat.
+11. **The Thicket** *(be still)*. She hid where the trees were oldest. The song came looking, one name at a time. It passed over her, and did not find her.
+12. **The Voice.** In the silence, the ember spoke for the first time: "They named me wrong. That is why I am still alive. Do you want my true name?"
+13. **The Answer.** When the Choir found her, Ione did not run. She sang back: one word, the god's true name, and the sky split open beneath the Choir.
+14. **The Price.** Every name has a price. When the ash settled, the girl with smoke for wings could not remember her own.
+
+*Teaser: Chapter Three, The Wild Country.* Beyond the ash, the old gods went to hide. One of them knows her name.
 
 ## Image credits
 
 All illustrations are by Gustave Doré (1832–1883) and are in the public domain. They were converted to grayscale, cropped and auto-leveled.
+
+### Chapter One
 
 | Scene | Source plate | Scan |
 |---|---|---|
@@ -66,10 +119,26 @@ All illustrations are by Gustave Doré (1832–1883) and are in the public domai
 | leap | *Paradise Lost*, Book III | Wikimedia Commons `Paradise_Lost_12.jpg` |
 | perch (teaser) | *Paradise Lost*, Book VI: "Now night her course began" | Wikimedia Commons `6-406_Now_night_her_course_began.jpg` |
 
-Every plate is now at least 1800px wide; the four Internet Archive scans are 2048px.
+### Chapter Two
 
-## Ideas for Chapter Two
+All from *Paradise Lost*, Internet Archive `miltonsparadisel00miltuoft` (University of Toronto). Leaf numbers are the archive's `n` page index, e.g. `archive.org/download/miltonsparadisel00miltuoft/page/n167_w2400.jpg`.
 
-- [ ] Write it. *The Ashen Choir*: the Order's singers can unmake magic by naming it.
-- [ ] More plates from the same Toronto scan of *Paradise Lost* (it has 50 high-res Doré plates) and the other eight plates in *Vivien*
-- [ ] Encode scenes as AVIF/WebP with a JPEG fallback, to bring the 8 MB of art down
+| Scene | Source plate | Leaf |
+|---|---|---|
+| cliff | Book IV, 172–173: "Now to the ascent of that steep savage hill Satan hath journey'd on, pensive and slow" | n167 |
+| choir | Book X, 610: "This said, they both betook them several ways" | n394 |
+| ridge | Book VI, 410–412: "On the foughten field Michael and his angels, prevalent, encamping…" | n260 |
+| thicket | Book IV, 247: "A happy rural seat of various view" | n168 |
+| voice | Book VII, 298–299: "Wave rolling after wave, where way they found" | n277 |
+| answer | Book VI, 874–875: "Hell at last yawning received them whole" | n238 |
+| price | Book IX, 99–100: "O Earth, how like to Heaven, if not preferred more justly" | n321 |
+| wild (teaser) | Book II, 628: "Gorgons, and Hydras, and Chimeras dire" | n114 |
+
+Every plate is at least 1800px wide; the Internet Archive scans are 2048px.
+
+## Ideas for Chapter Three
+
+- [ ] Write it. *The Wild Country*: the old gods hid beyond the ash, and one of them knows the name Ione lost.
+- [ ] Unused plates in the same Toronto scan (leaves n5, n55, n76, n145, n181, n237, n249, n283, n284, n290, n341, n342, n373, n384, n428, n453), and the other plates in *Vivien*
+- [ ] Hand-trace depth layers for the Chapter Two plates (they only use foreground gradients so far)
+- [ ] A third gate that fits the chapter, maybe *naming*: the reader types or chooses her name back

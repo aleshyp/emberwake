@@ -1,4 +1,4 @@
-import { PALETTE } from './renderer';
+import { PALETTE } from './palette';
 
 // Deterministic RNG so the debris looks the same on every visit.
 function mulberry32(seed: number) {

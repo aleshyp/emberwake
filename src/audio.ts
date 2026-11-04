@@ -8,6 +8,8 @@ export type SoundState = {
   mix: number;
   hold: number;
   awake: number;
+  /** how loudly the Ashen Choir sings, 0..1 */
+  song: number;
 };
 
 export class Sound {
@@ -21,7 +23,27 @@ export class Sound {
   private riserFilter!: BiquadFilterNode;
   private riserOsc!: OscillatorNode;
   private shimmer!: GainNode;
+  private choir!: GainNode;
+  private choirVowel!: BiquadFilterNode;
   private noise!: AudioBuffer;
+  private hidden = false;
+
+  constructor() {
+    // fade out and suspend while the tab is in the background; pick up again on return
+    document.addEventListener('visibilitychange', () => {
+      this.hidden = document.hidden;
+      if (!this.ctx || !this.enabled) return;
+      if (this.hidden) this.fadeTo(0, 0.08, true);
+      else this.ctx.resume().then(() => this.fadeTo(0.9, 0.4));
+    });
+  }
+
+  private fadeTo(level: number, tc: number, suspendAfter = false) {
+    const ctx = this.ctx!;
+    this.master.gain.cancelScheduledValues(ctx.currentTime);
+    this.master.gain.setTargetAtTime(level, ctx.currentTime, tc);
+    if (suspendAfter) window.setTimeout(() => (this.hidden || !this.enabled) && ctx.suspend(), tc * 6000);
+  }
 
   async toggle() {
     if (this.enabled) this.disable();
@@ -129,24 +151,55 @@ export class Sound {
       o.start();
     }
     shimmerBus.connect(this.shimmer).connect(this.master);
+
+    // ---- the Ashen Choir: a minor chord of voices, each a vibrato'd saw through "ah"/"oo" formants ----
+    const choirBus = ctx.createGain();
+    choirBus.gain.value = 0.5;
+    this.choirVowel = ctx.createBiquadFilter(); // the moving formant: opens from "oo" to "ah" as it swells
+    this.choirVowel.type = 'bandpass';
+    this.choirVowel.frequency.value = 450;
+    this.choirVowel.Q.value = 4;
+    const f2 = ctx.createBiquadFilter(); // a fixed second formant keeps it voice-like
+    f2.type = 'bandpass';
+    f2.frequency.value = 1150;
+    f2.Q.value = 6;
+    const f2Gain = ctx.createGain();
+    f2Gain.gain.value = 0.5;
+    this.choir = ctx.createGain();
+    this.choir.gain.value = 0;
+    choirBus.connect(this.choirVowel).connect(this.choir);
+    choirBus.connect(f2).connect(f2Gain).connect(this.choir);
+    this.choir.connect(this.master);
+    // D minor, spread over two octaves, every voice doubled and slightly detuned
+    for (const f of [73.42, 146.83, 174.61, 220.0, 293.66]) {
+      for (const detune of [-7, 6]) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = f;
+        o.detune.value = detune;
+        const vib = ctx.createOscillator();
+        vib.frequency.value = 4.6 + Math.random() * 1.2;
+        const vibAmt = ctx.createGain();
+        vibAmt.gain.value = 5;
+        vib.connect(vibAmt).connect(o.detune);
+        o.connect(choirBus);
+        o.start();
+        vib.start();
+      }
+    }
   }
 
   async enable() {
     if (!this.ctx) this.build();
-    const ctx = this.ctx!;
-    await ctx.resume();
-    this.master.gain.cancelScheduledValues(ctx.currentTime);
-    this.master.gain.setTargetAtTime(0.9, ctx.currentTime, 0.6);
+    await this.ctx!.resume();
     this.enabled = true;
+    if (!this.hidden) this.fadeTo(0.9, 0.6);
   }
 
   disable() {
     if (!this.ctx) return;
-    const ctx = this.ctx;
-    this.master.gain.cancelScheduledValues(ctx.currentTime);
-    this.master.gain.setTargetAtTime(0, ctx.currentTime, 0.15);
     this.enabled = false;
-    window.setTimeout(() => !this.enabled && ctx.suspend(), 600);
+    this.fadeTo(0, 0.15, true);
   }
 
   update(s: SoundState) {
@@ -161,6 +214,28 @@ export class Sound {
     this.riserFilter.frequency.setTargetAtTime(180 + s.hold * s.hold * 3200, t, 0.05);
     this.riserOsc.frequency.setTargetAtTime(110 * (1 + s.hold * 0.5), t, 0.05);
     this.shimmer.gain.setTargetAtTime(s.awake * 0.022, t, 0.4);
+    this.choir.gain.setTargetAtTime(s.song * 0.07, t, 0.35);
+    this.choirVowel.frequency.setTargetAtTime(380 + s.song * 420, t, 0.35);
+  }
+
+  /** the song passing over: a low, soft bell falling away, no boom */
+  hush() {
+    if (!this.enabled || !this.ctx) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    for (const [f, a] of [[293.66, 0.07], [349.23, 0.05], [440, 0.04]]) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * 0.94, t + 4);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(a, t + 0.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 4.6);
+    }
   }
 
   /** a struck bell with a low boom underneath: the ember waking */
