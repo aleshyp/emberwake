@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Emberwake: a short illustrated story about a girl, a dead god's ember, and the Order that wants it back." />
+    <meta name="theme-color" content="#e3140b" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Emberwake</title>
+  </head>
+  <body>
+    <div class="loader" id="loader" role="status">
+      <span class="loader__word">Emberwake</span>
+      <span class="loader__bar"><i></i></span>
+      <span class="loader__note">Kindling…</span>
+    </div>
+
+    <header class="hud">
+      <a class="hud__mark" href="#top" id="top">Emberwake</a>
+      <div class="hud__right">
+        <button class="hud__sound" id="sound" type="button" aria-pressed="false">Sound <b>Off</b></button>
+        <span class="hud__chapter"><span class="hud__word">Chapter </span><b id="chapter">I</b> / <span id="chapter-total">VII</span></span>
+      </div>
+    </header>
+
+    <main aria-label="Emberwake, a short illustrated story">
+      <h1 class="sr-only">Emberwake</h1>
+      <ol class="sr-only" id="sr-story"></ol>
+      <div class="track" id="track"></div>
+    </main>
+
+    <div class="captions" id="captions" aria-hidden="true"></div>
+
+    <div class="hint" id="hint" aria-live="polite">Scroll</div>
+
+    <div class="cursor" id="cursor" aria-hidden="true">
+      <svg viewBox="0 0 80 80">
+        <circle class="ring-bg" cx="40" cy="40" r="34" />
+        <circle class="ring" cx="40" cy="40" r="34" />
+      </svg>
+      <span class="cursor__label">Hold</span>
+    </div>
+
+    <section class="title" id="title" aria-hidden="true">
+      <p class="title__kicker">The first chapter of</p>
+      <h2 class="title__word" data-text="EMBERWAKE">EMBERWAKE</h2>
+      <p class="title__sub">The girl who swept the stairs</p>
+    </section>
+
+    <div class="letterbox" aria-hidden="true"><i></i><i></i></div>
+
+    <section class="teaser" id="teaser" aria-labelledby="teaser-title">
+      <p class="teaser__kicker">Chapter Two</p>
+      <h2 class="teaser__title" id="teaser-title">The Ashen Choir</h2>
+      <p class="teaser__line">The Order is not finished with her.<br />Neither is the god.</p>
+      <p class="teaser__soon">Coming soon</p>
+      <div class="teaser__actions">
+        <button type="button" id="again">Read again</button>
+        <button type="button" id="credits-open">Credits</button>
+      </div>
+    </section>
+
+    <dialog class="credits" id="credits" aria-labelledby="credits-title">
+      <h2 id="credits-title">Credits</h2>
+      <p>Story and site: <em>Emberwake</em>, an original short story.</p>
+      <p>All illustrations are wood engravings by <strong>Gustave Doré</strong> (1832–1883), in the public domain, re-inked live in WebGL.</p>
+      <ul>
+        <li>I. <em>Paradise Lost</em>, Book II: "High on a throne of royal state"</li>
+        <li>II. Tennyson, <em>Vivien</em>: Merlin and Vivien</li>
+        <li>III. <em>Paradiso</em>, Canto XXXI</li>
+        <li>IV. <em>Paradise Lost</em>, Book IV: "Me miserable!"</li>
+        <li>V. <em>Paradise Lost</em>, Book I: "They heard, and were abashed"</li>
+        <li>VI. <em>Paradise Lost</em>, Book VI: "Now storming fury rose"</li>
+        <li>VII. <em>Paradise Lost</em>, Book III</li>
+        <li>Chapter Two. <em>Paradise Lost</em>, Book VI: "Now night her course began"</li>
+      </ul>
+      <p class="credits__src">Scans: Wikimedia Commons and the Internet Archive (University of Toronto Libraries). Built with OGL, GSAP and Lenis.</p>
+      <button type="button" id="credits-close">Close</button>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
