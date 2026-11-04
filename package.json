@@ -1,21 +1,21 @@
 {
   "name": "emberwake",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A scroll-driven illustrated story: public-domain Doré engravings re-inked live in WebGL.",
+  "author": "Ian",
+  "license": "UNLICENSED",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "plate": "node scripts/prepare-plate.mjs",
+    "encode": "node scripts/encode-scenes.mjs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "devDependencies": {
-    "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+  "engines": {
+    "node": ">=20.11"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.3.0",
@@ -23,5 +23,10 @@
     "gsap": "^3.15.1",
     "lenis": "^1.3.27",
     "ogl": "^1.0.11"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
   }
 }
