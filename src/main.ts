@@ -6,11 +6,9 @@ import '@fontsource/cinzel/700.css';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/600.css';
 import './style.css';
-import { chapterOne } from './chapters/one';
-import { chapterTwo } from './chapters/two';
+import { chapters } from './chapters';
 
-const chapters = { one: chapterOne, two: chapterTwo };
-const chapter = chapters[document.documentElement.dataset.chapter as keyof typeof chapters] ?? chapterOne;
+const chapter = chapters.find((c) => c.id === document.documentElement.dataset.chapter) ?? chapters[0];
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function webglAvailable() {

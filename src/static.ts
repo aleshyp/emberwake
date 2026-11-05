@@ -4,6 +4,7 @@
 import type { Chapter, Scene } from './story';
 import { PALETTE } from './palette';
 import { asset } from './images';
+import { mountContents } from './contents';
 
 const rgb = (h: string) => {
   const n = parseInt(h.replace('#', ''), 16);
@@ -66,7 +67,7 @@ export function renderStatic(chapter: Chapter) {
     ${story
       .map(
         (s) => `
-      <figure class="static__scene">
+      <figure class="static__scene" id="${s.id}">
         ${plate(s)}
         <figcaption>
           <span class="caption__chapter">${s.chapter}. ${s.title}</span>
@@ -91,6 +92,14 @@ export function renderStatic(chapter: Chapter) {
     root.appendChild(teaser);
     teaser.classList.add('is-on');
   }
+
+  // the plate counter has nothing to count here: it just opens the contents
+  const contentsBtn = document.querySelector<HTMLButtonElement>('#contents-open');
+  if (contentsBtn) contentsBtn.textContent = 'Contents';
+  mountContents(chapter);
+  // the plates were added after the browser looked for the #scene anchor, so follow it now
+  const linked = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+  if (linked?.classList.contains('static__scene')) linked.scrollIntoView();
 
   const dlg = document.querySelector<HTMLDialogElement>('#credits')!;
   document.querySelector('#again')?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));

@@ -7,13 +7,33 @@ import type { Chapter } from '../story';
 
 export const chapterTwo: Chapter = {
   id: 'two',
+  title: 'The Ashen Choir',
+  path: 'two/',
   startAwake: true,
+  page: {
+    description: 'Emberwake, Chapter Two: the Order wakes the Ashen Choir, singers who unmake magic by naming it.',
+    shareDescription:
+      'The Order wakes the Ashen Choir, singers who unmake magic by naming it. An illustrated story you scroll through.',
+    shareImageAlt: 'A hooded figure with a sword under shafts of light, re-inked in red, black and cream.',
+    loading: 'Chapter Two · Listening…',
+    finale: { kicker: 'The second chapter of', sub: 'The girl with no name' },
+    teaser: {
+      kicker: 'Chapter Three',
+      title: 'The Wild Country',
+      line: 'Beyond the ash, the old gods went to hide.<br />One of them knows her name.',
+    },
+    credits: {
+      art: 'All illustrations are wood engravings by <strong>Gustave Doré</strong> (1832–1883) for Milton’s <em>Paradise Lost</em>, in the public domain, re-inked live in WebGL.',
+      scans: 'Scans: the Internet Archive (University of Toronto Libraries).',
+    },
+  },
   scenes: [
     {
       id: 'cliff',
       chapter: 'VIII',
       title: 'The Edge',
       src: 'cliff',
+      credit: 'Book IV: "Now to the ascent of that steep savage hill"',
       cam: { from: [1.3, 0.4, 0.32], to: [1.0, 0.5, 0.5] },
       tone: [0.27, 0.58],
       power: 0.4,
@@ -22,12 +42,12 @@ export const chapterTwo: Chapter = {
       depth: { amount: 0.026, gradient: [0.55, 1.0, 0, 0.55], layers: [] },
       captions: [
         {
-          text: 'She came down at dawn, on the last cliff before the wild country.',
+          text: 'Ione came down at dawn, on the last cliff before the wild country.',
           at: [0.08, 0.6],
           pos: { top: '16%', left: '6%' },
         },
         {
-          text: 'Behind her, the Hall was still burning. Ahead, nothing had a name yet.',
+          text: 'Behind her were ten thousand spears. Ahead, nothing had a name yet.',
           at: [0.3, 0.62],
           pos: { bottom: '14%', right: '7%' },
         },
@@ -38,6 +58,7 @@ export const chapterTwo: Chapter = {
       chapter: 'IX',
       title: 'The Choir',
       src: 'choir',
+      credit: 'Book X: "This said, they both betook them several ways"',
       cam: { from: [1.0, 0.5, 0.5], to: [1.28, 0.56, 0.4] },
       tone: [0.2, 0.4],
       power: 0.2,
@@ -46,12 +67,12 @@ export const chapterTwo: Chapter = {
       inset: { center: [0.565, 0.315], zoom: 8, rect: [0.07, 0.4, 0.3, 0.3], at: [0.26, 0.6], drift: 0.12 },
       captions: [
         {
-          text: 'The Order did not send soldiers this time. It woke the Ashen Choir.',
+          text: 'The Order woke the Ashen Choir. They carry swords, but they have never needed them.',
           at: [0.08, 0.6],
           pos: { top: '16%', right: '7%' },
         },
         {
-          text: 'They do not fight magic. They name it. Whatever they name turns to ash.',
+          text: 'They name magic, and it turns to ash. Every name they sing costs them one of their own.',
           at: [0.3, 0.62],
           pos: { bottom: '14%', right: '7%' },
         },
@@ -62,6 +83,7 @@ export const chapterTwo: Chapter = {
       chapter: 'X',
       title: 'The Ash',
       src: 'ridge',
+      credit: 'Book VI: "On the foughten field Michael and his angels, prevalent, encamping"',
       cam: { from: [1.3, 0.36, 0.36], to: [1.0, 0.5, 0.56] },
       tone: [0.17, 0.4],
       power: 0.3,
@@ -71,12 +93,12 @@ export const chapterTwo: Chapter = {
       depth: { amount: 0.026, gradient: [0.45, 1.0, 0, 0.6], layers: [] },
       captions: [
         {
-          text: 'Every spell they named fell out of the sky.',
+          text: 'They hunted every witch the Order had never chosen. Every spell they named fell out of the sky.',
           at: [0.08, 0.6],
           pos: { top: '18%', left: '6%' },
         },
         {
-          text: 'By nightfall the Choir stood on a hill of quiet witches, listening for one more heartbeat.',
+          text: 'By nightfall the whole Choir stood, pale as ash, on a hill of quiet witches, listening for one more heartbeat.',
           at: [0.3, 0.62],
           pos: { bottom: '14%', left: '6%' },
         },
@@ -87,6 +109,7 @@ export const chapterTwo: Chapter = {
       chapter: 'XI',
       title: 'The Thicket',
       src: 'thicket',
+      credit: 'Book IV: "A happy rural seat of various view"',
       cam: { from: [1.0, 0.5, 0.5], to: [1.32, 0.68, 0.42] },
       tone: [0.23, 0.64],
       power: 0.3,
@@ -97,13 +120,13 @@ export const chapterTwo: Chapter = {
       iris: [0.62, 0.42],
       captions: [
         {
-          text: 'She hid where the trees were oldest. The song came looking, one name at a time.',
+          text: 'Ione hid where the trees were oldest. The song came looking, one name at a time.',
           at: [0.06, 0.6],
           pos: { top: '14%', left: '6%' },
           when: 'before',
         },
         {
-          text: 'The song passed over her, and did not find her.',
+          text: 'The song passed over her, and moved on.',
           at: [0.06, 0.6],
           pos: { bottom: '16%', left: '6%' },
           when: 'after',
@@ -115,18 +138,19 @@ export const chapterTwo: Chapter = {
       chapter: 'XII',
       title: 'The Voice',
       src: 'voice',
+      credit: 'Book VII: "Wave rolling after wave, where way they found"',
       cam: { from: [1.3, 0.47, 0.42], to: [1.0, 0.5, 0.46] },
       tone: [0.26, 0.48],
       power: 0.95,
       transition: 'melt',
       captions: [
         {
-          text: 'In the silence, the ember spoke for the first time.',
+          text: 'In the silence, the ember spoke for the first time: “They named me wrong. That is why I am still alive.”',
           at: [0.08, 0.6],
           pos: { top: '16%', left: '6%' },
         },
         {
-          text: '“They named me wrong,” it said. “That is why I am still alive. Do you want my true name?”',
+          text: '“Sing my true name, and I will wake all the way. You have seen what a name costs.”',
           at: [0.3, 0.62],
           pos: { bottom: '14%', right: '7%' },
         },
@@ -137,6 +161,7 @@ export const chapterTwo: Chapter = {
       chapter: 'XIII',
       title: 'The Answer',
       src: 'answer',
+      credit: 'Book VI: "Hell at last yawning received them whole"',
       cam: { from: [1.0, 0.5, 0.6], to: [1.3, 0.46, 0.3] },
       tone: [0.16, 0.44],
       power: 1,
@@ -145,12 +170,12 @@ export const chapterTwo: Chapter = {
       inset: { center: [0.45, 0.21], zoom: 5, rect: [0.6, 0.48, 0.3, 0.3], at: [0.3, 0.6], drift: 0.12 },
       captions: [
         {
-          text: 'When the Choir found her at last, Ione did not run. She sang back.',
+          text: 'Ione thought of the hill of quiet witches. Then she said yes.',
           at: [0.08, 0.6],
           pos: { top: '16%', right: '7%' },
         },
         {
-          text: 'One word, the god’s true name, and the sky split open beneath the Choir.',
+          text: 'When the Choir found her, she sang first: one word, the god’s true name. The sky split open beneath them.',
           at: [0.3, 0.62],
           pos: { bottom: '14%', left: '6%' },
         },
@@ -161,16 +186,18 @@ export const chapterTwo: Chapter = {
       chapter: 'XIV',
       title: 'The Price',
       src: 'price',
+      credit: 'Book IX: "O Earth, how like to Heaven"',
       cam: { from: [1.3, 0.4, 0.44], to: [1.0, 0.5, 0.46] },
       tone: [0.27, 0.62],
       power: 0.55,
       transition: 'melt',
-      length: 1.6,
+      // longer than Chapter One's finale so the closing line gets as much scroll as the other captions
+      length: 2,
       depth: { amount: 0.026, gradient: [0.6, 1.0, 0, 0.5], layers: [] },
       captions: [
         {
-          text: 'Every name has a price. When the ash settled, the girl with smoke for wings could not remember her own.',
-          at: [0.04, 0.2],
+          text: 'When the ash settled, the girl with smoke for wings could not remember her own name.',
+          at: [0.03, 0.24],
           pos: { top: '16%', right: '7%' },
         },
       ],
@@ -180,6 +207,7 @@ export const chapterTwo: Chapter = {
       chapter: 'III',
       title: 'Chapter Three',
       src: 'wild',
+      credit: 'Book II: "Gorgons, and Hydras, and Chimeras dire"',
       cam: { from: [1.3, 0.5, 0.42], to: [1.1, 0.5, 0.5] },
       tone: [0.21, 0.5],
       power: 0.8,

@@ -5,6 +5,8 @@ import { TRANSITION, SCENE_VH, type Chapter } from './story';
 import { Stage } from './renderer';
 import { Fx } from './fx';
 import { Sound } from './audio';
+import { mountContents } from './contents';
+import { loadProgress, saveProgress } from './progress';
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const clamp01 = (v: number) => Math.min(Math.max(v, 0), 1);
@@ -94,9 +96,13 @@ export function start(chapter: Chapter, reduced: boolean) {
   $<HTMLButtonElement>('#again').addEventListener('click', () => {
     lenis.scrollTo(0, { duration: reduced ? 0.01 : 3.2, easing: (x) => 1 - Math.pow(1 - x, 4) });
   });
-  $<HTMLButtonElement>('#credits-open').addEventListener('click', () => creditsDlg.showModal());
+  $<HTMLButtonElement>('#credits-open').addEventListener('click', () => {
+    lenis.stop(); // the page shouldn't scroll behind the dialog
+    creditsDlg.showModal();
+  });
   $<HTMLButtonElement>('#credits-close').addEventListener('click', () => creditsDlg.close());
   creditsDlg.addEventListener('click', (e) => e.target === creditsDlg && creditsDlg.close());
+  creditsDlg.addEventListener('close', () => lenis.start());
 
   // ---------- State ----------
   const state = {
@@ -132,6 +138,88 @@ export function start(chapter: Chapter, reduced: boolean) {
     sound.wake();
   }
 
+  // ---------- Jumps: contents, #scene links and resuming ----------
+  /** pass the gate quietly, for readers who jump or resume past it */
+  function passGate() {
+    if (state.open) return;
+    state.open = true;
+    state.holding = false;
+    state.hold = 0;
+    if (gate?.kind === 'hold') {
+      state.awake = 1;
+      document.body.classList.add('is-awake');
+    }
+  }
+  /** jump to a point on the timeline (in scene units) */
+  function goTo(p: number) {
+    const y = p * sceneHeight();
+    if (y > gateY() + 1) passGate();
+    stage.loadScene(locate(p).i).catch(() => {});
+    lenis.scrollTo(y, { immediate: true, force: true });
+  }
+  /** a hair past the start of scene k: the exact boundary can round down into the previous scene's last pixel */
+  const sceneStart = (k: number) => (k > 0 ? offsets[k] + 0.002 : 0);
+  const sceneFromHash = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    return id ? scenes.findIndex((s) => s.id === id) : -1;
+  };
+
+  const saved = loadProgress(chapter.id);
+  /** don't overwrite the saved place while booting, or while the resume card waits for an answer */
+  let keepSaved = true;
+  const save = () => {
+    if (!keepSaved) saveProgress(chapter.id, { p: lenis.scroll / sceneHeight(), open: state.open });
+  };
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save());
+
+  function offerResume(p: number, open: boolean) {
+    const s = scenes[locate(p).i];
+    const card = document.createElement('aside');
+    card.className = 'resume';
+    card.setAttribute('aria-label', 'Continue reading');
+    card.innerHTML = `
+      <p class="resume__line">Welcome back. Continue from <b>${s.chapter}. ${s.title}</b>?</p>
+      <div class="resume__actions">
+        <button type="button" data-go>Continue</button>
+        <button type="button">Start over</button>
+      </div>`;
+    document.body.appendChild(card);
+    requestAnimationFrame(() => card.classList.add('is-on'));
+    keepSaved = true;
+    const done = () => {
+      keepSaved = false;
+      card.classList.remove('is-on');
+      window.setTimeout(() => card.remove(), 600);
+      save();
+    };
+    card.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button');
+      if (!btn) return;
+      if (btn.hasAttribute('data-go')) {
+        if (open) passGate();
+        goTo(sceneStart(locate(p).i));
+      }
+      done();
+    });
+    // reading on without choosing counts as starting over
+    dismissResume = () => keepSaved && done();
+  }
+  let dismissResume = () => {};
+
+  mountContents(chapter, {
+    jump: (k) => k >= 0 && goTo(sceneStart(k)),
+    current: () => locate(Math.max(lenis.scroll / sceneHeight(), 0)).i,
+    onOpen: () => lenis.stop(),
+    onClose: () => lenis.start(),
+  });
+  window.addEventListener('hashchange', () => {
+    const k = sceneFromHash();
+    if (k < 0) return;
+    goTo(sceneStart(k));
+    history.replaceState(null, '', location.pathname + location.search);
+  });
+
   // ---------- Input ----------
   let lastPointer = [-1, -1];
   const moved = () => (state.lastInput = performance.now());
@@ -162,6 +250,8 @@ export function start(chapter: Chapter, reduced: boolean) {
   window.addEventListener('blur', endHold);
   window.addEventListener('keydown', (e) => {
     moved();
+    // keys inside the contents or credits belong to the dialog, not the hold
+    if ((e.target as HTMLElement).closest?.('dialog')) return;
     if (gate?.kind === 'hold' && (e.code === 'Space' || e.code === 'Enter') && canHold && !state.open) {
       e.preventDefault();
       if (!e.repeat) startHold();
@@ -171,10 +261,14 @@ export function start(chapter: Chapter, reduced: boolean) {
     if (e.code === 'Space' || e.code === 'Enter') endHold();
   });
 
+  /** the finale title comes in once the last scene's captions are done (at local progress 0.2 at the earliest) */
+  const TITLE_AT = Math.max(0.2, ...storyScenes[storyScenes.length - 1].captions.map((c) => c.at[1]));
+
   // ---------- Loop ----------
   const RING = 2 * Math.PI * 34;
   ring.style.strokeDasharray = `${RING}`;
   let last = performance.now();
+  let lastScene = -1;
 
   function frame(now: number) {
     // real elapsed time (capped only for tab-switch gaps) so the gate feels the same at any frame rate
@@ -194,6 +288,11 @@ export function start(chapter: Chapter, reduced: boolean) {
     const scroll = lenis.scroll;
     const p = Math.max(scroll / sceneHeight(), 0);
     const { i, t } = locate(p);
+    if (p > 0.3) dismissResume();
+    if (i !== lastScene) {
+      lastScene = i;
+      save();
+    }
     const tStart = tStartOf(i);
     const transitioning = i < scenes.length - 1 && t > tStart;
     const mix = transitioning ? clamp01((t - tStart) / TRANSITION) : 0;
@@ -269,13 +368,15 @@ export function start(chapter: Chapter, reduced: boolean) {
 
     // scroll hint / gate hint
     hint.classList.toggle('is-on', p < 0.04 || canHold);
-    hint.textContent = !canHold
+    const hintText = !canHold
       ? 'Scroll'
       : still
         ? 'Be still. Don’t move, don’t scroll.'
         : touch
           ? 'Press and hold'
           : 'Press and hold — or hold Space';
+    // #hint is a live region: only touch it when the words change, or screen readers re-announce every frame
+    if (hint.textContent !== hintText) hint.textContent = hintText;
 
     // cursor: on the still gate, the ring fills as long as the reader stays put
     cursor.classList.toggle('is-hold', canHold);
@@ -288,11 +389,11 @@ export function start(chapter: Chapter, reduced: boolean) {
     // finale title + debris (on the last story scene), fading out before the teaser
     const finale = i === storyScenes.length - 1;
     const fadeOut = 1 - smoothstep(tStart - 0.1, tStart - 0.01, t);
-    const r = finale ? clamp01((t - 0.2) / 0.22) * fadeOut : 0;
+    const r = finale ? clamp01((t - TITLE_AT) / 0.22) * fadeOut : 0;
     titleEl.style.setProperty('--r', r.toFixed(4));
     titleEl.classList.toggle('is-on', r > 0);
     const debrisFade = finale ? 1 - smoothstep(tStart - 0.06, tStart + 0.12, t) : 0;
-    const debris = finale ? clamp01((t - 0.18) / 0.45) : 0;
+    const debris = finale ? clamp01((t - TITLE_AT + 0.02) / 0.45) : 0;
     if (debris > 0.04 && !state.boomed) {
       state.boomed = true;
       sound.boom(0.6);
@@ -321,18 +422,39 @@ export function start(chapter: Chapter, reduced: boolean) {
   }
 
   // ---------- Boot ----------
-  // the first two scenes gate the loader; the rest stream in behind it, in story order
+  // Where to start: a #scene link wins; a reload or back/forward returns to the saved place;
+  // a fresh visit with a saved place mid-chapter starts at the top and offers to continue.
+  // (Scroll restoration is ours: the browser's would put the reader past a gate that's closed again.)
+  history.scrollRestoration = 'manual';
+  const linked = sceneFromHash();
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const returning = nav?.type === 'reload' || nav?.type === 'back_forward';
+  const savedScene = saved ? locate(saved.p).i : 0;
+  const startAt = linked >= 0 ? sceneStart(linked) : saved && returning ? saved.p : 0;
+  const offer = linked < 0 && !returning && saved && savedScene >= 1 && !scenes[savedScene].teaser;
+
+  // the scenes at the starting point gate the loader; the rest stream in behind it, in story order
+  const startScene = locate(startAt).i;
+  const firstScenes = [startScene, startScene + 1].filter((k) => k < scenes.length);
   let loaded = 0;
-  const first = [0, 1].map((k) =>
-    stage.loadScene(k).then(() => (loaderBar.style.transform = `scaleX(${++loaded / 2})`)),
+  const first = firstScenes.map((k) =>
+    stage.loadScene(k).then(() => (loaderBar.style.transform = `scaleX(${++loaded / firstScenes.length})`)),
   );
+  if (offer) stage.loadScene(savedScene).catch(() => {}); // ready in case they continue
   Promise.all(first)
     .then(async () => {
-      for (let k = 2; k < scenes.length; k++) await stage.loadScene(k).catch(console.error);
+      for (let k = 0; k < scenes.length; k++) await stage.loadScene(k).catch(console.error);
     })
     .catch(() => {});
   Promise.all(first)
     .then(() => {
+      if (startAt > 0) {
+        if (saved?.open && linked < 0) passGate();
+        goTo(startAt);
+      }
+      if (linked >= 0) history.replaceState(null, '', location.pathname + location.search);
+      keepSaved = false;
+      if (offer) offerResume(saved.p, saved.open);
       loader.classList.add('is-done');
       if (reduced) document.body.classList.add('is-reduced');
       requestAnimationFrame(frame);

@@ -2,12 +2,27 @@ import type { Chapter } from '../story';
 
 export const chapterOne: Chapter = {
   id: 'one',
+  path: '',
+  page: {
+    description: "Emberwake: a short illustrated story about a girl, a dead god's ember, and the Order that wants it back.",
+    shareDescription:
+      'A girl who swept the stairs, the last ember of a murdered god, and the Order that wants it back. An illustrated story you scroll through.',
+    shareImageAlt: 'A winged figure on a rock, re-inked in red, black and cream.',
+    loading: 'Kindling…',
+    finale: { kicker: 'The first chapter of', sub: 'The girl who swept the stairs' },
+    teaser: { kicker: 'Chapter Two', title: 'The Ashen Choir', line: 'The Order is not finished with her.<br />Neither is the god.' },
+    credits: {
+      art: 'All illustrations are wood engravings by <strong>Gustave Doré</strong> (1832–1883), in the public domain, re-inked live in WebGL.',
+      scans: 'Scans: Wikimedia Commons and the Internet Archive (University of Toronto Libraries).',
+    },
+  },
   scenes: [
     {
       id: 'hall',
       chapter: 'I',
       title: 'The Hall',
       src: 'hall',
+      credit: '<em>Paradise Lost</em>, Book II: "High on a throne of royal state"',
       cam: { from: [1.0, 0.5, 0.3], to: [1.12, 0.45, 0.6] },
       tone: [0.21, 0.57],
       power: 0,
@@ -44,6 +59,7 @@ export const chapterOne: Chapter = {
       chapter: 'II',
       title: 'The Keeper',
       src: 'keeper',
+      credit: 'Tennyson, <em>Vivien</em>: Merlin and Vivien',
       cam: { from: [1.0, 0.45, 0.5], to: [1.18, 0.42, 0.64] },
       tone: [0.22, 0.58],
       power: 0,
@@ -82,6 +98,7 @@ export const chapterOne: Chapter = {
       chapter: 'III',
       title: 'The Ember',
       src: 'ember',
+      credit: '<em>Paradiso</em>, Canto XXXI',
       cam: { from: [1.0, 0.48, 0.5], to: [1.35, 0.48, 0.42] },
       tone: [0.22, 0.58],
       power: 0.35,
@@ -108,6 +125,7 @@ export const chapterOne: Chapter = {
       chapter: 'IV',
       title: 'The Burning',
       src: 'burning',
+      credit: '<em>Paradise Lost</em>, Book IV: "Me miserable!"',
       cam: { from: [1.0, 0.5, 0.28], to: [1.15, 0.55, 0.4] },
       tone: [0.2, 0.52],
       power: 0.7,
@@ -145,6 +163,7 @@ export const chapterOne: Chapter = {
       chapter: 'V',
       title: 'The Watchers',
       src: 'watchers',
+      credit: '<em>Paradise Lost</em>, Book I: "They heard, and were abashed"',
       cam: { from: [1.15, 0.5, 0.6], to: [1.0, 0.5, 0.42] },
       tone: [0.17, 0.48],
       power: 0.5,
@@ -169,6 +188,11 @@ export const chapterOne: Chapter = {
           at: [0.08, 0.62],
           pos: { top: '16%', left: '6%' },
         },
+        {
+          text: 'Before the night was out, the Order had a new name for the girl who swept the stairs: Devil.',
+          at: [0.3, 0.62],
+          pos: { bottom: '14%', right: '7%' },
+        },
       ],
     },
     {
@@ -176,6 +200,7 @@ export const chapterOne: Chapter = {
       chapter: 'VI',
       title: 'The Storm',
       src: 'storm',
+      credit: '<em>Paradise Lost</em>, Book VI: "Now storming fury rose"',
       cam: { from: [1.2, 0.5, 0.35], to: [1.0, 0.5, 0.6] },
       tone: [0.3, 0.7],
       power: 0.6,
@@ -200,21 +225,22 @@ export const chapterOne: Chapter = {
       chapter: 'VII',
       title: 'The Leap',
       src: 'leap',
-      cam: { from: [1.3, 0.5, 0.4], to: [1.0, 0.5, 0.3] },
+      credit: '<em>Paradise Lost</em>, Book III (flipped)',
+      // the plate is flipped vertically (art/leap.jpg): she rises toward a world hanging above her
+      cam: { from: [1.3, 0.5, 0.6], to: [1.0, 0.5, 0.4] },
       tone: [0.25, 0.6],
       power: 1,
       transition: 'melt',
       length: 1.6,
       depth: {
         amount: 0.036,
-        gradient: [0.5, 1.0, 0, 0.5],
         layers: [
           {
             depth: 1,
             poly: [
-              [0.66, 0.205], [0.69, 0.22], [0.675, 0.27], [0.705, 0.31], [0.7, 0.37], [0.73, 0.43], [0.765, 0.49],
-              [0.7, 0.47], [0.64, 0.44], [0.55, 0.445], [0.47, 0.42], [0.28, 0.43], [0.4, 0.39], [0.47, 0.37],
-              [0.56, 0.32], [0.6, 0.29], [0.63, 0.25], [0.64, 0.22],
+              [0.66, 0.795], [0.69, 0.78], [0.675, 0.73], [0.705, 0.69], [0.7, 0.63], [0.73, 0.57], [0.765, 0.51],
+              [0.7, 0.53], [0.64, 0.56], [0.55, 0.555], [0.47, 0.58], [0.28, 0.57], [0.4, 0.61], [0.47, 0.63],
+              [0.56, 0.68], [0.6, 0.71], [0.63, 0.75], [0.64, 0.78],
             ],
           },
         ],
@@ -232,6 +258,7 @@ export const chapterOne: Chapter = {
       chapter: 'II',
       title: 'Chapter Two',
       src: 'perch',
+      credit: '<em>Paradise Lost</em>, Book VI: "Now night her course began"',
       cam: { from: [1.35, 0.38, 0.52], to: [1.12, 0.42, 0.5] },
       tone: [0.24, 0.62],
       power: 0.8,

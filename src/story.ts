@@ -76,13 +76,42 @@ export type Scene = {
   depth?: Depth;
   /** scroll length as a multiple of SCENE_VH (default 1) */
   length?: number;
-  /** the closing teaser for the next chapter: letterboxed, no chapter counter */
+  /** the closing teaser for the next chapter: letterboxed, no plate counter */
   teaser?: boolean;
   captions: Caption[];
+  /** where the engraving comes from, for the credits (HTML allowed) */
+  credit: string;
+};
+
+/**
+ * The words on a chapter's page that aren't captions: share card, loader, finale title, the
+ * next-chapter teaser and credits. src/page.ts renders them into the page (HTML allowed where noted).
+ */
+export type PageText = {
+  /** <meta name="description"> for search results */
+  description: string;
+  /** Open Graph description for the share card (the card image is public/social/<id>.jpg) */
+  shareDescription: string;
+  /** alt text for the share card image */
+  shareImageAlt: string;
+  /** the line under the loader bar */
+  loading: string;
+  /** the small lines above and below EMBERWAKE on the finale */
+  finale: { kicker: string; sub: string };
+  /** the next-chapter card on the teaser scene; `line` may hold HTML (e.g. <br />) */
+  teaser: { kicker: string; title: string; line: string };
+  /** credits paragraphs (HTML): the illustrations, and where the scans came from */
+  credits: { art: string; scans: string };
 };
 
 export type Chapter = {
-  id: 'one' | 'two';
+  /** matches <html data-chapter> on the chapter's page */
+  id: string;
+  /** shown in the contents after "Chapter Two:" (optional) */
+  title?: string;
+  /** the chapter page relative to the site root: '' for the first, 'two/' for the second */
+  path: string;
+  page: PageText;
   /** the ember is already awake when the chapter opens (everything after Chapter One) */
   startAwake?: boolean;
   scenes: Scene[];

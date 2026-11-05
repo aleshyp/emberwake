@@ -18,6 +18,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # project site lives at https://aleshyp.github.io/emberwake/
+      BASE_PATH: /emberwake/
+      SITE_URL: https://aleshyp.github.io
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -26,10 +30,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-        env:
-          # project site lives at https://aleshyp.github.io/emberwake/
-          BASE_PATH: /emberwake/
-          SITE_URL: https://aleshyp.github.io
+      # read both chapters in a real browser before anything is published (see tests/smoke.spec.ts)
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

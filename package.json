@@ -12,7 +12,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "plate": "node scripts/prepare-plate.mjs",
-    "encode": "node scripts/encode-scenes.mjs"
+    "encode": "node scripts/encode-scenes.mjs",
+    "test": "npm run build && playwright test",
+    "test:only": "playwright test"
   },
   "engines": {
     "node": ">=20.11"
@@ -25,6 +27,7 @@
     "ogl": "^1.0.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "sharp": "^0.35.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
